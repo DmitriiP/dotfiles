@@ -1,0 +1,3 @@
+zsh
+zsh-completions
+ttf-hack-nerd

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zellij"
+target_dir="$cache_dir/contract_version_1/session_info"
+source_version="${1:-}"
+
+pick_source_dir() {
+    local candidate
+    while IFS= read -r candidate; do
+        source_dir="$candidate"
+    done < <(
+        find "$cache_dir" -mindepth 2 -maxdepth 2 -type d -path "$cache_dir/*/session_info" \
+            | rg '/[0-9]+\.[0-9]+\.[0-9]+/session_info$' \
+            | sort -V
+    )
+}
+
+if [[ -n "$source_version" ]]; then
+    source_dir="$cache_dir/$source_version/session_info"
+else
+    source_dir=""
+    pick_source_dir
+fi
+
+[[ -n "${source_dir:-}" && -d "$source_dir" ]] || {
+    printf 'zellij-import-legacy-sessions: no legacy session_info directory found\n' >&2
+    exit 1
+}
+
+mkdir -p "$target_dir"
+
+imported=0
+skipped=0
+
+while IFS= read -r session_dir; do
+    session_name="$(basename "$session_dir")"
+    if [[ -e "$target_dir/$session_name" ]]; then
+        skipped=$((skipped + 1))
+        continue
+    fi
+
+    cp -a "$session_dir" "$target_dir/"
+    printf 'Imported legacy session metadata: %s\n' "$session_name"
+    imported=$((imported + 1))
+done < <(find "$source_dir" -mindepth 1 -maxdepth 1 -type d | sort)
+
+printf 'Imported %d session(s), skipped %d existing session(s)\n' "$imported" "$skipped"

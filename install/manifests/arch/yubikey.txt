@@ -1,0 +1,6 @@
+gnupg
+pinentry
+pcsclite
+ccid
+yubikey-manager
+opensc

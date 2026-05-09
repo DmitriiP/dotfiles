@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zellij"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/zellij-recovery"
+timestamp="$(date +%Y%m%d-%H%M%S)"
+backup_dir="$state_dir/$timestamp"
+found=0
+
+if [[ ! -d "$cache_dir" ]]; then
+    printf 'zellij-fix-cache: no cache directory at %s\n' "$cache_dir"
+    exit 0
+fi
+
+while IFS= read -r path; do
+    rel_path="${path#$cache_dir/}"
+    mkdir -p "$backup_dir/$(dirname "$rel_path")"
+    mv "$path" "$backup_dir/$rel_path"
+    printf 'Moved %s -> %s\n' "$path" "$backup_dir/$rel_path"
+    found=1
+done < <(find "$cache_dir" -mindepth 1 -maxdepth 2 -type d -name 'zellij:session-manager' | sort)
+
+if (( found == 0 )); then
+    printf 'zellij-fix-cache: no session-manager cache directories found\n'
+    exit 0
+fi
+
+printf 'Session-manager cache backed up under %s\n' "$backup_dir"

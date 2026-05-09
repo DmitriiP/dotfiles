@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v gpg >/dev/null 2>&1; then
+    printf 'yubikey-ssh-pubkey: gpg is not available\n' >&2
+    exit 1
+fi
+
+key_id="${1:-}"
+if [[ -z "$key_id" ]]; then
+    key_id="$(
+        gpg --list-secret-keys --with-colons 2>/dev/null \
+            | awk -F: '$1 == "fpr" { print $10; exit }'
+    )"
+fi
+
+[[ -n "$key_id" ]] || {
+    printf 'yubikey-ssh-pubkey: no key id available\n' >&2
+    exit 1
+}
+
+gpg --export-ssh-key "$key_id"

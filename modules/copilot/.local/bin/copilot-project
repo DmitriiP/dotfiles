@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v copilot >/dev/null 2>&1; then
+    printf 'copilot-project: copilot CLI is not installed\n' >&2
+    exit 1
+fi
+
+project_root=""
+if command -v git >/dev/null 2>&1; then
+    project_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+
+if [[ -z "$project_root" ]]; then
+    project_root="$PWD"
+fi
+
+cd "$project_root"
+exec copilot "$@"

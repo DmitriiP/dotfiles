@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+gnupg_home="${GNUPGHOME:-$HOME/.gnupg}"
+sshcontrol="$gnupg_home/sshcontrol"
+
+if ! command -v gpg >/dev/null 2>&1; then
+    printf 'yubikey-ssh-enable: gpg is not available\n' >&2
+    exit 1
+fi
+
+auth_grip="$(
+    gpg --list-secret-keys --with-keygrip --with-colons 2>/dev/null \
+        | awk -F: '
+            $1 == "ssb" { capability = $12; next }
+            $1 == "grp" && capability ~ /a/ { print $10; exit }
+        '
+)"
+
+if [[ -z "$auth_grip" ]]; then
+    printf 'yubikey-ssh-enable: no authentication subkey found\n' >&2
+    exit 1
+fi
+
+mkdir -p "$gnupg_home"
+touch "$sshcontrol"
+
+if ! grep -qx "Keygrip = $auth_grip" "$sshcontrol"; then
+    printf 'Keygrip = %s\n' "$auth_grip" >>"$sshcontrol"
+fi
+
+printf 'Enabled GPG authentication subkey for SSH: %s\n' "$auth_grip"

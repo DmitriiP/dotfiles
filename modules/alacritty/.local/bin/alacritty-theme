@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
+theme_dir="$config_dir/themes"
+active_file="$theme_dir/active.toml"
+mode_file="$config_dir/theme-mode"
+
+usage() {
+    cat <<'EOF'
+Usage: alacritty-theme [dark|light|toggle|status]
+EOF
+}
+
+current_mode() {
+    if [[ -f "$mode_file" ]]; then
+        tr -d '[:space:]' <"$mode_file"
+    else
+        printf 'dark'
+    fi
+}
+
+apply_mode() {
+    local mode="$1"
+    local source_file="$theme_dir/${mode}.toml"
+
+    [[ -f "$source_file" ]] || {
+        printf 'alacritty-theme: missing theme file: %s\n' "$source_file" >&2
+        exit 1
+    }
+
+    cp "$source_file" "$active_file"
+    printf '%s\n' "$mode" >"$mode_file"
+
+    # Touch the main config to make sure live reload notices the theme change.
+    touch "$config_dir/alacritty.toml"
+    printf 'Switched Alacritty to %s mode\n' "$mode"
+}
+
+case "${1:-toggle}" in
+    dark)
+        apply_mode dark
+        ;;
+    light)
+        apply_mode light
+        ;;
+    toggle)
+        if [[ "$(current_mode)" == "dark" ]]; then
+            apply_mode light
+        else
+            apply_mode dark
+        fi
+        ;;
+    status)
+        printf '%s\n' "$(current_mode)"
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        usage >&2
+        exit 1
+        ;;
+esac

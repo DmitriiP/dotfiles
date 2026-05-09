@@ -1,0 +1,11 @@
+neovim
+fd
+ripgrep
+python-pynvim
+nodejs
+npm
+tree-sitter-cli
+make
+gcc
+unzip
+curl

@@ -1,0 +1,4 @@
+awesome
+xorg-xinit
+xbindkeys
+xsel
