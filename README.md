@@ -1,6 +1,6 @@
 # dotfiles
 
-Arch-first dotfiles monorepo built around GNU Stow.
+Dotfiles monorepo built around GNU Stow. Supports Arch Linux and Ubuntu/Debian.
 
 ## Layout
 
@@ -14,7 +14,7 @@ Arch-first dotfiles monorepo built around GNU Stow.
 ./install/bootstrap.sh
 ```
 
-On Arch, bootstrap installs `stow` if needed, saves your module choices, installs module packages from the Arch manifests, and links the selected modules into `$HOME`.
+Bootstrap installs `stow` if needed, saves your module choices, installs module packages from the OS-specific manifests (under `install/manifests/arch/` or `install/manifests/ubuntu/`), runs any post-install hooks, and links the selected modules into `$HOME`.
 
 ## Current modules
 
@@ -96,7 +96,7 @@ Included helpers:
 The zsh module also refreshes `GPG_TTY` automatically in interactive shells so
 git signing keeps working inside terminals and Zellij panes.
 
-On Arch you will usually also want `pcscd` running so the card is visible to GnuPG.
+You will usually also want `pcscd` running so the card is visible to GnuPG. On Arch: `sudo systemctl enable --now pcscd.socket`. On Ubuntu: `sudo systemctl enable --now pcscd`.
 
 ## Git
 
@@ -187,4 +187,3 @@ It installs small CLI helpers in `~/.local/bin`:
 - `copilot-project` runs Copilot from the current git repo root when possible
 
 The default Zellij `ide` layout uses `copilot-project` for the `Lovely Assistant` tab.
-# dotfiles

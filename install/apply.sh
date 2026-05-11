@@ -83,29 +83,42 @@ if [[ ${#MODULE_ARGS[@]} -gt 0 ]]; then
     ENABLED_MODULES="${MODULE_ARGS[*]}"
 fi
 
-read -r -a modules <<<"${ENABLED_MODULES:-}"
+modules=()
+for _m in ${ENABLED_MODULES:-}; do modules+=("$_m"); done
+unset _m
 [[ ${#modules[@]} -gt 0 ]] || die "No modules selected. Run install/wizard.sh or pass --module."
 
-install_arch_packages() {
-    local -a packages=()
-    local manifest
+read_manifest_packages() {
+    local manifest_dir="$1"
+    local -a result=()
+    local manifest pkg
 
-    for manifest in "$REPO_ROOT/install/manifests/arch/base.txt"; do
+    for manifest in "$manifest_dir/base.txt"; do
+        [[ -f "$manifest" ]] || continue
         while IFS= read -r pkg; do
             [[ -n "$pkg" ]] || continue
-            packages+=("$pkg")
+            [[ "$pkg" != \#* ]] || continue
+            result+=("$pkg")
         done <"$manifest"
     done
 
     local module
     for module in "${modules[@]}"; do
-        manifest="$REPO_ROOT/install/manifests/arch/${module}.txt"
+        manifest="$manifest_dir/${module}.txt"
         [[ -f "$manifest" ]] || continue
         while IFS= read -r pkg; do
             [[ -n "$pkg" ]] || continue
-            packages+=("$pkg")
+            [[ "$pkg" != \#* ]] || continue
+            result+=("$pkg")
         done <"$manifest"
     done
+
+    [[ ${#result[@]} -gt 0 ]] && printf '%s\n' "${result[@]}"
+}
+
+install_arch_packages() {
+    local -a packages=()
+    mapfile -t packages < <(read_manifest_packages "$REPO_ROOT/install/manifests/arch")
 
     if [[ ${#packages[@]} -eq 0 ]]; then
         return
@@ -113,6 +126,73 @@ install_arch_packages() {
 
     log "Installing Arch packages for selected modules"
     sudo pacman -S --needed "${packages[@]}"
+}
+
+install_debian_packages() {
+    local -a packages=()
+    mapfile -t packages < <(read_manifest_packages "$REPO_ROOT/install/manifests/ubuntu")
+
+    if [[ ${#packages[@]} -eq 0 ]]; then
+        return
+    fi
+
+    log "Installing packages for selected modules"
+    sudo apt-get install -y "${packages[@]}"
+}
+
+run_module_hooks() {
+    local module hook
+    for module in "${modules[@]}"; do
+        hook="$REPO_ROOT/install/hooks/${module}.sh"
+        [[ -x "$hook" ]] || continue
+        log "Running post-install hook: $module"
+        source "$hook"
+    done
+}
+
+run_module_post_hooks() {
+    local module hook
+    for module in "${modules[@]}"; do
+        hook="$REPO_ROOT/install/hooks/${module}.post.sh"
+        [[ -x "$hook" ]] || continue
+        log "Running post-stow hook: $module"
+        source "$hook"
+    done
+}
+
+BACKUP_DIR=""
+
+backup_stow_conflicts() {
+    local module="$1"
+    local conflicts
+
+    conflicts="$(stow -n --restow --dir "$REPO_ROOT/modules" --target "$TARGET" "$module" 2>&1 || true)"
+
+    local -a paths=()
+    while IFS= read -r line; do
+        if [[ "$line" == *"existing target is neither a link nor a directory:"* ]]; then
+            local rel="${line##*existing target is neither a link nor a directory: }"
+            rel="${rel% }"
+            [[ -n "$rel" ]] && paths+=("$rel")
+        fi
+    done <<<"$conflicts"
+
+    [[ ${#paths[@]} -gt 0 ]] || return 0
+
+    if [[ -z "$BACKUP_DIR" ]]; then
+        BACKUP_DIR="$DOTFILES_STATE_DIR/backups/$(date +%Y%m%d-%H%M%S)"
+        ensure_dir "$BACKUP_DIR"
+        log "Backing up conflicting files to $BACKUP_DIR"
+    fi
+
+    local rel_path
+    for rel_path in "${paths[@]}"; do
+        local src="$TARGET/$rel_path"
+        [[ -e "$src" ]] || continue
+        ensure_dir "$BACKUP_DIR/$(dirname "$rel_path")"
+        mv "$src" "$BACKUP_DIR/$rel_path"
+        log "  backed up: $rel_path"
+    done
 }
 
 ensure_git_checkout() {
@@ -137,13 +217,18 @@ if (( INSTALL_PACKAGES )); then
         arch)
             install_arch_packages
             ;;
-        debian|macos)
-            warn "Package installation is not implemented for this OS yet; applying links only"
+        debian)
+            install_debian_packages
+            ;;
+        macos)
+            warn "Package installation is not implemented for macOS yet; applying links only"
             ;;
         *)
             warn "Unknown OS; applying links only"
             ;;
     esac
+
+    run_module_hooks
 fi
 
 require_stow
@@ -153,11 +238,11 @@ if [[ " ${modules[*]} " == *" yubikey "* ]]; then
     chmod 700 "$TARGET/.gnupg"
 fi
 
-if [[ " ${modules[*]} " == *" awesome "* || " ${modules[*]} " == *" alacritty "* || " ${modules[*]} " == *" git "* || " ${modules[*]} " == *" zellij "* || " ${modules[*]} " == *" nvim "* ]]; then
+if [[ " ${modules[*]} " == *" awesome "* || " ${modules[*]} " == *" alacritty "* || " ${modules[*]} " == *" git "* || " ${modules[*]} " == *" zellij "* || " ${modules[*]} " == *" nvim "* || " ${modules[*]} " == *" zscaler "* ]]; then
     ensure_dir "$TARGET/.config"
 fi
 
-if [[ " ${modules[*]} " == *" alacritty "* || " ${modules[*]} " == *" yubikey "* || " ${modules[*]} " == *" zellij "* || " ${modules[*]} " == *" copilot "* ]]; then
+if [[ " ${modules[*]} " == *" alacritty "* || " ${modules[*]} " == *" yubikey "* || " ${modules[*]} " == *" zellij "* || " ${modules[*]} " == *" copilot "* || " ${modules[*]} " == *" zscaler "* ]]; then
     ensure_dir "$TARGET/.local/bin"
 fi
 
@@ -165,7 +250,14 @@ if [[ " ${modules[*]} " == *" git "* ]]; then
     ensure_dir "$TARGET/.config/git"
 fi
 
-read -r -a previous_modules <<<"$(read_managed_modules)"
+if [[ " ${modules[*]} " == *" zscaler "* ]]; then
+    ensure_dir "$TARGET/.config/systemd/user"
+    ensure_dir "$TARGET/.local/share/applications"
+fi
+
+previous_modules=()
+for _m in $(read_managed_modules); do previous_modules+=("$_m"); done
+unset _m
 
 declare -A selected=()
 for module in "${modules[@]}"; do
@@ -188,6 +280,9 @@ done
 
 for module in "${modules[@]}"; do
     [[ -d "$REPO_ROOT/modules/$module" ]] || die "Unknown module: $module"
+    if ! (( DRY_RUN )); then
+        backup_stow_conflicts "$module"
+    fi
     log "Stowing module: $module"
     stow "${STOW_FLAGS[@]}" --restow --dir "$REPO_ROOT/modules" --target "$TARGET" "$module"
 done
@@ -244,8 +339,16 @@ if [[ " ${modules[*]} " == *" nvim "* ]]; then
     fi
 fi
 
+if ! (( DRY_RUN )); then
+    run_module_post_hooks
+fi
+
 write_managed_modules "${modules[@]}"
 ENABLED_MODULES="${modules[*]}"
 save_profile
+
+if [[ -n "$BACKUP_DIR" ]]; then
+    log "Conflicting files were backed up to $BACKUP_DIR"
+fi
 
 log "Done"

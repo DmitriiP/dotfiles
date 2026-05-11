@@ -1,0 +1,6 @@
+gnupg
+pinentry-curses
+pcscd
+libccid
+yubikey-manager
+opensc-pkcs11

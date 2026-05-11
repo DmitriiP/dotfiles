@@ -1,0 +1,10 @@
+neovim
+fd-find
+ripgrep
+python3-pynvim
+nodejs
+npm
+make
+gcc
+unzip
+curl

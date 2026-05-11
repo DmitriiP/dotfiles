@@ -45,8 +45,14 @@ case "$(detect_os)" in
             sudo pacman -S --needed stow
         fi
         ;;
-    debian|macos)
-        warn "Bootstrap package installation is only implemented for Arch right now"
+    debian)
+        if ! command_exists stow; then
+            log "Installing GNU Stow on Debian/Ubuntu"
+            sudo apt-get install -y stow
+        fi
+        ;;
+    macos)
+        warn "Bootstrap package installation is not implemented for macOS yet"
         ;;
     *)
         warn "Unknown OS; continuing without package installation"
