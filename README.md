@@ -98,6 +98,37 @@ git signing keeps working inside terminals and Zellij panes.
 
 You will usually also want `pcscd` running so the card is visible to GnuPG. On Arch: `sudo systemctl enable --now pcscd.socket`. On Ubuntu: `sudo systemctl enable --now pcscd`.
 
+### Reconnect handling (pcscd hotplug)
+
+pcscd doesn't always notice a YubiKey that's been unplugged and reinserted,
+and gpg-agent's `scdaemon` keeps a stale PC/SC session open to the old
+reader, so `pinentry`/`gpg-agent` can't see the card again until you
+manually run `sudo systemctl restart pcscd`. The `yubikey` module's install
+hook (`install/hooks/yubikey.sh`) installs a udev rule + systemd service to
+do this automatically:
+
+- `/etc/udev/rules.d/99-yubikey-pcscd-reload.rules` — matches the YubiKey's
+  USB vendor ID and asks systemd to start `yubikey-pcscd-reload.service`
+  whenever the device is (re)plugged in.
+- `/etc/systemd/system/yubikey-pcscd-reload.service` — a oneshot unit that
+  runs `/usr/local/libexec/yubikey-pcscd-reload`
+  (`install/resources/yubikey/yubikey-pcscd-reload`), which:
+  1. Runs `udevadm settle` plus a short delay, since this fires on the raw
+     USB "add" uevent, before the device is fully (re)enumerated - racing
+     pcscd's restart against that enumeration caused it to come back up
+     seeing 0 readers. (This is also why a *manual* restart run a few
+     seconds later always looked like it "worked".)
+  2. Restarts pcscd (a `reload`/`--hotplug` signal was tried first but
+     proved unreliable at picking up a reinserted reader; only a full
+     restart worked reliably in testing), then waits briefly again.
+  3. Runs `gpgconf --kill scdaemon` for every logged-in user, since
+     scdaemon keeps a stale PC/SC session open to the old reader and
+     won't reconnect on its own.
+
+These require `sudo` and are only installed on Linux; the hook runs
+automatically whenever the `yubikey` module is applied via
+`install/apply.sh`.
+
 ## Git
 
 The git module keeps repo-safe shared defaults in `~/.gitconfig` and writes personal identity data to:

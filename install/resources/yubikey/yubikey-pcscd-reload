@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Run (as root) by yubikey-pcscd-reload.service whenever a YubiKey is
+# (re)plugged in.
+#
+# Three things are needed to make the reconnected card usable again:
+#   1. Let the USB (re)enumeration finish. This service fires on the raw
+#      USB "add" uevent, which can land before the device's interfaces are
+#      fully registered/claimable. `udevadm settle` plus a short grace
+#      period avoids racing pcscd's restart against that enumeration - a
+#      manual restart run seconds later never hits this race, which is
+#      why it "worked" while the udev-triggered one didn't.
+#   2. Have pcscd rescan its reader list. In testing, `systemctl reload`
+#      (which sends pcscd its --hotplug signal) was NOT reliable at
+#      picking up a reinserted reader; only a full `systemctl restart`
+#      consistently worked, so we use that despite being more disruptive.
+#   3. Kick gpg-agent's scdaemon for every logged-in user. scdaemon keeps
+#      a PC/SC session open to the old reader and does not notice a
+#      reconnect on its own - it needs to be told to drop that session so
+#      it reconnects and sees the card again.
+set -euo pipefail
+
+udevadm settle --timeout=5 || true
+sleep 1
+
+systemctl restart pcscd.service
+
+# Give pcscd a moment to finish enumerating readers before we send
+# scdaemon back in - otherwise it can reconnect into the same gap.
+sleep 1
+
+for runtime_dir in /run/user/*; do
+    uid="${runtime_dir##*/}"
+    [[ "$uid" =~ ^[0-9]+$ ]] || continue
+
+    user="$(getent passwd "$uid" | cut -d: -f1)"
+    [[ -n "$user" ]] || continue
+
+    [[ -S "$runtime_dir/gnupg/S.gpg-agent" ]] || continue
+
+    runuser -u "$user" -- env XDG_RUNTIME_DIR="$runtime_dir" gpgconf --kill scdaemon || true
+done
+

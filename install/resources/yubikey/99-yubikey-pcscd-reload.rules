@@ -1,0 +1,9 @@
+# Nudge pcscd (and gpg-agent's scdaemon) to notice a reconnected YubiKey.
+#
+# pcscd's own udev-based hotplug detection can miss a reader that was
+# unplugged and reinserted, leaving gpg-agent/pinentry unable to see the
+# card until pcscd is restarted by hand. Rather than calling systemctl
+# directly from this udev rule (which can deadlock the udev worker), we
+# hand off to systemd via SYSTEMD_WANTS so it runs safely and
+# asynchronously. See install/resources/yubikey/yubikey-pcscd-reload.service.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1050", TAG+="systemd", ENV{SYSTEMD_WANTS}+="yubikey-pcscd-reload.service"

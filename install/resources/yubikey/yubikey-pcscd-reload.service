@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart pcscd and kick gpg-agent's scdaemon so they pick up a reconnected YubiKey
+# Avoid piling up if the YubiKey is replugged rapidly.
+StartLimitIntervalSec=10
+StartLimitBurst=1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/yubikey-pcscd-reload
