@@ -1,4 +1,3 @@
-neovim
 fd-find
 ripgrep
 python3-pynvim

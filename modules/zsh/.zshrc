@@ -134,3 +134,20 @@ fi
 if command -v gpgconf >/dev/null 2>&1; then
   export SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
 fi
+
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/profile.env" ]]; then
+  set -a
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/profile.env"
+  set +a
+fi
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# bun completions
+[ -s "/home/di/.bun/_bun" ] && source "/home/di/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"

@@ -7,8 +7,8 @@ live_config_reload = true
 ipc_socket = true
 
 [font]
-size = 8
-normal = { family = "Hack Nerd Font", style = "Regular" }
+size = 10
+normal = { family = "MesloLGS NF", style = "Regular" }
 
 [scrolling]
 history = 50000

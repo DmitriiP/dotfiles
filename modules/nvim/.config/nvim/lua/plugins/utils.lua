@@ -50,11 +50,11 @@ return {
                 defaults = {
                     file_ignore_patterns = {
                         "^%.git/",
-                        "^node_modules/",
-                        "^__pycache__/",
+                        "node_modules/",
+                        "__pycache__/",
                         "^%.mypy_cache/",
                         "^%.pytest_cache/",
-                        "^%.venv/",
+                        "%.venv/",
                         "^%.terraform/",
                         "^dist/",
                         "^build/",
