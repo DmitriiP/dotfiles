@@ -16,6 +16,60 @@ Dotfiles monorepo built around GNU Stow. Supports Arch Linux and Ubuntu/Debian.
 
 Bootstrap installs `stow` if needed, saves your module choices, installs module packages from the OS-specific manifests (under `install/manifests/arch/` or `install/manifests/ubuntu/`), runs any post-install hooks, and links the selected modules into `$HOME`.
 
+## Scripts
+
+### bootstrap.sh
+
+First-time setup entry point. Installs GNU Stow, then either runs the wizard (first run or `--wizard`) or applies an existing profile.
+
+```text
+./install/bootstrap.sh [options]
+
+  --wizard          Force interactive setup
+  --profile FILE    Use a profile env file
+  -h, --help        Show this help
+```
+
+### wizard.sh
+
+Interactive profile builder. Prompts for modules, git identity, agent CLI tool, wallpaper, etc. Saves to `~/.config/dotfiles/profile.env` and runs apply automatically.
+
+```text
+./install/wizard.sh [options]
+
+  --profile FILE    Load a profile env file as defaults
+  -h, --help        Show this help
+```
+
+### apply.sh
+
+Applies a profile non-interactively. Installs packages, runs hooks, stows modules, and bootstraps runtimes (nvim plugins, oh-my-zsh, etc.).
+
+```text
+./install/apply.sh [options]
+
+  --module NAME           Enable a module for this run (repeatable)
+  --profile FILE          Load a profile env file instead of the saved profile
+  --target DIR            Link into DIR instead of $HOME
+  --wallpaper PATH        Use a local wallpaper override for the awesome module
+  --skip-packages         Do not install system packages
+  --dry-run               Show what Stow would do
+  -h, --help              Show this help
+```
+
+Examples:
+
+```bash
+# Apply a profile file directly
+./install/apply.sh --profile profiles/ubuntu-desktop.env.example
+
+# Dry-run a single module
+./install/apply.sh --module zellij --skip-packages --dry-run
+
+# Apply into a test directory
+./install/apply.sh --target /tmp/dotfiles-test --skip-packages
+```
+
 ## Current modules
 
 - `awesome`
@@ -25,7 +79,21 @@ Bootstrap installs `stow` if needed, saves your module choices, installs module 
 - `git`
 - `zellij`
 - `nvim`
-- `copilot`
+- `agent`
+
+## Profile variables
+
+Profiles are stored at `~/.config/dotfiles/profile.env` and contain:
+
+| Variable | Description |
+|---|---|
+| `ENABLED_MODULES` | Space-separated list of modules to install |
+| `AWESOME_WALLPAPER_SOURCE` | Path to a custom wallpaper for the awesome module |
+| `GIT_USER_NAME` | Git identity name |
+| `GIT_USER_EMAIL` | Git identity email |
+| `GIT_SIGNING_KEY` | GPG signing key ID |
+| `GIT_COMMIT_SIGNING` | Enable commit signing by default (`true`/`false`) |
+| `AGENT_CLI` | CLI tool for the agent module (`copilot`, `claude`, etc.) |
 
 ## Wallpaper overrides
 
@@ -206,15 +274,23 @@ Extra Neovim keybindings:
 - `<leader>fg` live-greps with the same hidden-file behavior
 - `<leader>fm` searches tracked git files only
 
-## Copilot
+## Agent
 
-The copilot module is intentionally lightweight. It does **not** store local Copilot auth or state from:
+The agent module provides CLI wrappers that run whichever agent tool is configured via the `AGENT_CLI` profile variable (defaults to `copilot`).
 
-- `~/.config/github-copilot`
+It installs two helpers in `~/.local/bin`:
 
-It installs small CLI helpers in `~/.local/bin`:
+- `agent-here` runs the configured agent CLI in the current directory
+- `agent-project` runs the configured agent CLI from the current git repo root when possible
 
-- `copilot-here` runs Copilot in the current directory
-- `copilot-project` runs Copilot from the current git repo root when possible
+The default Zellij `ide` layout uses `agent-project` for the `Lovely Assistant` tab.
 
-The default Zellij `ide` layout uses `copilot-project` for the `Lovely Assistant` tab.
+To switch agent tools, set `AGENT_CLI` in your profile or re-run the wizard:
+
+```bash
+# In ~/.config/dotfiles/profile.env
+AGENT_CLI='claude'
+
+# Or re-run the wizard
+./install/wizard.sh
+```

@@ -66,9 +66,9 @@ if [[ " ${ENABLED_MODULES:-} " != *" nvim "* ]]; then
     nvim_default="n"
 fi
 
-copilot_default="y"
-if [[ " ${ENABLED_MODULES:-} " != *" copilot "* ]]; then
-    copilot_default="n"
+agent_default="y"
+if [[ " ${ENABLED_MODULES:-} " != *" agent "* ]]; then
+    agent_default="n"
 fi
 
 read -r -p "Enable awesome module? [${awesome_default^^}/${awesome_default,,}] " awesome_answer
@@ -92,8 +92,8 @@ zellij_answer="${zellij_answer:-$zellij_default}"
 read -r -p "Enable nvim module? [${nvim_default^^}/${nvim_default,,}] " nvim_answer
 nvim_answer="${nvim_answer:-$nvim_default}"
 
-read -r -p "Enable copilot module? [${copilot_default^^}/${copilot_default,,}] " copilot_answer
-copilot_answer="${copilot_answer:-$copilot_default}"
+read -r -p "Enable agent module? [${agent_default^^}/${agent_default,,}] " agent_answer
+agent_answer="${agent_answer:-$agent_default}"
 
 modules=()
 case "$awesome_answer" in
@@ -173,9 +173,9 @@ case "$nvim_answer" in
         ;;
 esac
 
-case "$copilot_answer" in
+case "$agent_answer" in
     y|Y|yes|YES)
-        modules+=(copilot)
+        modules+=(agent)
         ;;
     n|N|no|NO)
         ;;
@@ -183,6 +183,14 @@ case "$copilot_answer" in
         die "Please answer yes or no"
         ;;
 esac
+
+if [[ " ${modules[*]} " == *" agent "* ]]; then
+    agent_cli_default="${AGENT_CLI:-copilot}"
+    read -r -p "Agent CLI tool (copilot, claude, ...) [$agent_cli_default]: " agent_cli_input
+    AGENT_CLI="${agent_cli_input:-$agent_cli_default}"
+else
+    AGENT_CLI=""
+fi
 
 if [[ " ${modules[*]} " == *" awesome "* ]]; then
     read -r -p "Custom awesome wallpaper path [leave empty for repo default]: " wallpaper_input

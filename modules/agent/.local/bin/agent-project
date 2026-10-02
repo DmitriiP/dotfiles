@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v copilot >/dev/null 2>&1; then
-    printf 'copilot-project: copilot CLI is not installed\n' >&2
+AGENT_CLI="${AGENT_CLI:-copilot}"
+
+if ! command -v "$AGENT_CLI" >/dev/null 2>&1; then
+    printf 'agent-project: %s CLI is not installed\n' "$AGENT_CLI" >&2
     exit 1
 fi
 
@@ -16,4 +18,4 @@ if [[ -z "$project_root" ]]; then
 fi
 
 cd "$project_root"
-exec copilot "$@"
+exec "$AGENT_CLI" "$@"

@@ -14,6 +14,7 @@ GIT_USER_NAME="${GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
 GIT_SIGNING_KEY="${GIT_SIGNING_KEY:-}"
 GIT_COMMIT_SIGNING="${GIT_COMMIT_SIGNING:-}"
+AGENT_CLI="${AGENT_CLI:-}"
 
 usage() {
     cat <<'EOF'
@@ -242,7 +243,7 @@ if [[ " ${modules[*]} " == *" awesome "* || " ${modules[*]} " == *" alacritty "*
     ensure_dir "$TARGET/.config"
 fi
 
-if [[ " ${modules[*]} " == *" alacritty "* || " ${modules[*]} " == *" yubikey "* || " ${modules[*]} " == *" zellij "* || " ${modules[*]} " == *" copilot "* || " ${modules[*]} " == *" zscaler "* ]]; then
+if [[ " ${modules[*]} " == *" alacritty "* || " ${modules[*]} " == *" yubikey "* || " ${modules[*]} " == *" zellij "* || " ${modules[*]} " == *" agent "* || " ${modules[*]} " == *" zscaler "* ]]; then
     ensure_dir "$TARGET/.local/bin"
 fi
 

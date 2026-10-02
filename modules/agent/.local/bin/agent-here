@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+AGENT_CLI="${AGENT_CLI:-copilot}"
+
+if ! command -v "$AGENT_CLI" >/dev/null 2>&1; then
+    printf 'agent-here: %s CLI is not installed\n' "$AGENT_CLI" >&2
+    exit 1
+fi
+
+exec "$AGENT_CLI" "$@"

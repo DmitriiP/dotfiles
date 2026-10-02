@@ -12,7 +12,7 @@ layout {
         pane size=1 borderless=true {
             plugin location="zellij:tab-bar"
         }
-        pane command="copilot-project"
+        pane command="agent-project"
         pane size=1 borderless=true {
             plugin location="zellij:status-bar"
         }
